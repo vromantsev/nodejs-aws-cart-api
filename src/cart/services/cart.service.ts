@@ -1,62 +1,32 @@
 import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'node:crypto';
-import { Cart, CartStatuses } from '../models';
+import { Cart } from '../models';
 import { PutCartPayload } from 'src/order/type';
+import { CartRepository } from '../repository';
 
 @Injectable()
 export class CartService {
-  private userCarts: Record<string, Cart> = {};
+  constructor(private readonly cartRepository: CartRepository) {}
 
-  findByUserId(userId: string): Cart {
-    return this.userCarts[userId];
+  async findByUserId(userId: string): Promise<Cart | null> {
+    return await this.cartRepository.findByUserId(userId);
   }
 
-  createByUserId(user_id: string): Cart {
-    const timestamp = Date.now();
-
-    const userCart = {
-      id: randomUUID(),
-      user_id,
-      created_at: timestamp,
-      updated_at: timestamp,
-      status: CartStatuses.OPEN,
-      items: [],
-    };
-
-    this.userCarts[user_id] = userCart;
-
-    return userCart;
+  async createByUserId(user_id: string): Promise<Cart | null> {
+    return await this.cartRepository.createByUserId(user_id);
   }
 
-  findOrCreateByUserId(userId: string): Cart {
-    const userCart = this.findByUserId(userId);
-
-    if (userCart) {
-      return userCart;
-    }
-
-    return this.createByUserId(userId);
+  async findOrCreateByUserId(userId: string): Promise<Cart | null> {
+    return await this.cartRepository.findOrCreateByUserId(userId);
   }
 
-  updateByUserId(userId: string, payload: PutCartPayload): Cart {
-    const userCart = this.findOrCreateByUserId(userId);
-
-    const index = userCart.items.findIndex(
-      ({ product }) => product.id === payload.product.id,
-    );
-
-    if (index === -1) {
-      userCart.items.push(payload);
-    } else if (payload.count === 0) {
-      userCart.items.splice(index, 1);
-    } else {
-      userCart.items[index] = payload;
-    }
-
-    return userCart;
+  async updateByUserId(
+    userId: string,
+    payload: PutCartPayload,
+  ): Promise<Cart | null> {
+    return await this.cartRepository.updateByUserId(userId, payload);
   }
 
   removeByUserId(userId): void {
-    this.userCarts[userId] = null;
+    this.cartRepository.removeByUserId(userId);
   }
 }
